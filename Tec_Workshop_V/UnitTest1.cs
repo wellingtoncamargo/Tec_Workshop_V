@@ -1,7 +1,9 @@
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using RestSharp;
 using System;
+using System.Linq;
 
 namespace Tec_Workshop_V
 {
@@ -12,6 +14,7 @@ namespace Tec_Workshop_V
         public IRestResponse resp;
         public string dog_nome;
         public JArray dog_foto;
+        public string dog_status;
 
         public RestClient Client(string uri)
         {
@@ -37,6 +40,12 @@ namespace Tec_Workshop_V
             endpoint.RequestFormat = DataFormat.Json;
         }
 
+        public void Put()
+        {
+            endpoint.Method = Method.PUT;
+            endpoint.RequestFormat = DataFormat.Json;
+        }
+
         public void Params(string chave, string valor)
         {
             endpoint.AddParameter(chave, valor);
@@ -59,13 +68,21 @@ namespace Tec_Workshop_V
                           },
                           ""name"": ""Nina Maria"",
                           ""photoUrls"": [
-                            ""file:///C:/Users/wncg/Desktop/QArentena/Nina_Maria1.jpeg"",
-                            ""file:///C:/Users/wncg/Desktop/QArentena/Nina_Maria2.jpeg"",
-                            ""file:///C:/Users/wncg/Desktop/QArentena/Nina_Maria3.jpeg"",
-                            ""file:///C:/Users/wncg/Desktop/QArentena/Nina_Maria.jpeg""
+                            ""file:///C:/Users/wncg/Desktop/QArentena/Nina_Maria1.jpeg""                            
                           ],
                           ""status"": ""available""
                         }";
+            return body;
+        }
+
+        public string Alterar_json(string _json, string chave, dynamic valor)
+        {
+            JObject Objeto_Json = JObject.Parse(_json);
+            if (chave == "foto")
+                Objeto_Json["photoUrls"][0] = valor;
+            Objeto_Json[chave] = valor;
+
+            string body = JsonConvert.SerializeObject(Objeto_Json);
             return body;
         }
 
@@ -96,6 +113,13 @@ namespace Tec_Workshop_V
             Console.WriteLine(obj);
         }
 
+        public dynamic Busca_valor(dynamic chave)
+        {
+            dynamic obs = JProperty.Parse(resp.Content);
+            var valor = obs[chave];
+            return valor;
+        }
+
         [Test]
         public void Buscando_Musica()
         {
@@ -121,7 +145,7 @@ namespace Tec_Workshop_V
 
         }
         
-       
+       [Test]
         public void Dog_novo_Pet()
         {
             Client("https://petstore.swagger.io/v2");
@@ -131,16 +155,19 @@ namespace Tec_Workshop_V
             StatusCode(200);
             Resp();
 
-            dynamic obs = JProperty.Parse(resp.Content);
-            dog_nome = obs["name"];
+            
+            dog_nome = Busca_valor("name");
             Console.WriteLine(dog_nome);
 
-            dog_foto = obs["photoUrls"];
+            dog_foto = Busca_valor("photoUrls");
             Console.WriteLine(dog_foto.ToString());
+
+            dog_status = Busca_valor("status");
+            Console.WriteLine(dog_status.ToString());
         }
         
    
-        public void Adotanto_Doguinho()
+        public void Adotanto_Doguinho(string nome, dynamic foto, string dog_status)
         {
             Client("https://petstore.swagger.io/v2");
             Endpoint("/pet/12345");
@@ -148,13 +175,36 @@ namespace Tec_Workshop_V
             StatusCode(200);
             //Resp();
 
-            dynamic obs = JProperty.Parse(resp.Content);
-            string dog_nome2 = obs["name"];
-            Assert.AreEqual(dog_nome, dog_nome2);
-            Console.WriteLine(dog_nome.ToString());
+            string dog_nome2 = Busca_valor("name");
+            Assert.AreEqual(nome, dog_nome2);
 
-            JArray dog_foto2 = obs["photoUrls"];
-            Assert.AreEqual(dog_foto, dog_foto2);
+            JArray dog_foto2 = Busca_valor("photoUrls");
+            Assert.AreEqual(foto, dog_foto2);
+
+            string dog_status2 = Busca_valor("status");
+            Assert.AreEqual(dog_status, dog_status2);
+        }
+
+        public void Alterando_Informacao_Dog_Pet()
+        {
+            Client("https://petstore.swagger.io/v2");
+            Endpoint("/pet");
+            Put();
+            dynamic fotos = "file:///C:/Users/wncg/Desktop/QArentena/Nina_Maria2.jpeg";
+            var foto = Alterar_json(resp.Content, "foto", fotos);
+            var Status = Alterar_json(foto, "status", "Adotada");
+            Body(Status);
+            StatusCode(200);
+            Resp();
+
+            
+            dog_nome = Busca_valor("name");
+            Console.WriteLine(dog_nome);
+
+            dog_foto = Busca_valor("photoUrls");
+            Console.WriteLine(dog_foto.ToString());
+
+            dog_status = Busca_valor("status");
             Console.WriteLine(dog_foto.ToString());
         }
 
@@ -163,7 +213,11 @@ namespace Tec_Workshop_V
         {
             Dog_novo_Pet();
             Console.WriteLine("==========================================");
-            Adotanto_Doguinho();
+            Adotanto_Doguinho(dog_nome, dog_foto, dog_status);
+            Console.WriteLine("==========================================");
+            Alterando_Informacao_Dog_Pet();
+            Console.WriteLine("==========================================");
+            Adotanto_Doguinho(dog_nome, dog_foto, dog_status);
         }
     }
 }
